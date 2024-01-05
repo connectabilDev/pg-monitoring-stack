@@ -1,0 +1,46 @@
+databases:
+  postgres:
+    dsn: env:PG_DATABASE_DSN
+
+metrics:
+  long_queries_calls:
+    type: gauge
+    labels: [queryid, query]
+  long_queries_rows:
+    type: gauge
+    labels: [queryid, query]
+  long_queries_min_exec_time:
+    type: gauge
+    labels: [queryid, query]
+  long_queries_max_exec_time:
+    type: gauge
+    labels: [queryid, query]
+  long_queries_avg_exec_time:
+    type: gauge
+    labels: [queryid, query]
+
+queries:
+  long_queries_avg_exec_time:
+    databases: [postgres]
+    metrics:
+      - long_queries_calls
+      - long_queries_rows
+      - long_queries_min_exec_time
+      - long_queries_max_exec_time
+      - long_queries_avg_exec_time
+    sql: >
+      SELECT 
+          queryid,
+          SUBSTR(query, 1, 120) AS query,
+          calls AS long_queries_calls,
+          rows AS long_queries_rows,
+          min_exec_time AS long_queries_min_exec_time,
+          max_exec_time AS long_queries_max_exec_time,
+          total_exec_time / calls AS long_queries_avg_exec_time
+      FROM 
+          pg_stat_statements
+      WHERE
+          calls >= 100
+      ORDER BY 
+          long_queries_avg_exec_time DESC
+      LIMIT 10;

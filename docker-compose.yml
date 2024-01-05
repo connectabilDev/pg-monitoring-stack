@@ -1,0 +1,81 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:13-alpine
+    command: "postgres -c config_file='/etc/postgresql/postgresql.conf'"
+    volumes:
+      - ./pg-data:/var/lib/postgresql/data
+      - ./postgres.conf:/etc/postgresql/postgresql.conf
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=pguser
+      - POSTGRES_PASSWORD=pgpass
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    command: "--collector.database_wraparound --collector.long_running_transactions --collector.postmaster --collector.process_idle --collector.stat_statements"
+    environment:
+      - DATA_SOURCE_NAME=postgresql://pguser:pgpass@postgres:5432/postgres?sslmode=disable
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+
+  pgbouncer:
+    image: edoburu/pgbouncer
+    environment:
+      - DB_USER=pguser
+      - DB_PASSWORD=pgpass
+      - DB_HOST=postgres
+      - POOL_MODE=transaction
+      - ADMIN_USERS=postgres,pguser
+    ports:
+      - "5432:5432"
+    depends_on:
+      - postgres
+
+  pgbouncer-exporter:
+    image: prometheuscommunity/pgbouncer-exporter:v0.7.0
+    command: ["--pgBouncer.connectionString=postgres://pguser:pgpass@pgbouncer:5432/pgbouncer?sslmode=disable"]
+    ports:
+      - "9127:9127"
+    depends_on:
+      - pgbouncer
+
+  query-exporter:
+    image: adonato/query-exporter:2.9.2
+    command:
+      - -L
+      - DEBUG
+    environment:
+      - PG_DATABASE_DSN=postgresql://pguser:pgpass@postgres:5432/postgres?sslmode=disable
+    volumes:
+      - ./query-config.yml:/config.yaml
+    ports:
+      - "9560:9560"
+    depends_on:
+      - postgres
+
+  grafana:
+    image: grafana/grafana
+    volumes:
+      - ./gf-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+
+  prometheus:
+    image: prom/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-remote-write-receiver'
+    volumes:
+      - ./prom-data:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
