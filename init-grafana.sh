@@ -23,4 +23,4 @@ fi
 
 # Inicializa o docker-compose
 echo "Inicializando o Grafana com docker-compose..."
-docker-compose up -d
+docker compose up -d
