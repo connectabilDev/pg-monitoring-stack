@@ -34,8 +34,9 @@ services:
       - DB_HOST=postgres
       - POOL_MODE=transaction
       - ADMIN_USERS=postgres,pguser
-    # ports:
-    #   - "5432:5432"
+      - MAX_CLIENT_CONN=5000
+    ports:
+      - "80321:5432"
     depends_on:
       - postgres
     networks:
