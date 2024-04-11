@@ -73,11 +73,12 @@ services:
   grafana:
     image: grafana/grafana
     volumes:
-      - gf-data:/var/lib/grafana
+      - grafana_data:/var/lib/grafana
     ports:
       - "8041:3000"
     networks:
       - easypanel
+    user: "root"
 
   prometheus:
     image: prom/prometheus
@@ -99,9 +100,10 @@ services:
 
 volumes:
   pg-data:
-  gf-data:
+  grafana_data:
+    external: true
   prom-data:
 
 networks:
   easypanel:
-    external: true
+    # external: true
