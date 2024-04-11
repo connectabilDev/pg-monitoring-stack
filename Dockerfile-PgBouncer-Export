@@ -1,0 +1,14 @@
+# Dockerfile - pgbouncer-exporter
+FROM prometheuscommunity/pgbouncer-exporter:v0.7.0
+
+ARG DB_USER
+ARG DB_PASSWORD
+ARG DB_HOST
+
+ENV DB_USER=${DB_USER} \
+    DB_PASSWORD=${DB_PASSWORD} \
+    DB_HOST=${DB_HOST}
+    DB_STRING="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/postgres?sslmode=disable"
+
+# CMD ["--pgBouncer.connectionString=postgres://pguser:pgpass@pgbouncer:5432/pgbouncer?sslmode=disable"]
+CMD ["--pgBouncer.connectionString=${DB_STRING}"]
