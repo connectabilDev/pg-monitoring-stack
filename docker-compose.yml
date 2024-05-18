@@ -21,10 +21,6 @@ services:
       - database
       - easypanel
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 40G
 
   pgbouncer:
     image: edoburu/pgbouncer
