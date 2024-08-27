@@ -31,16 +31,16 @@ services:
       - POOL_MODE=${POOL_MODE}
       - ADMIN_USERS=${ADMIN_USERS}
       - MAX_CLIENT_CONN=${MAX_CLIENT_CONN}
-    labels:
-      - "traefik.enable=true" # <== Enable traefik on itself to view dashboard and assign subdomain to view it
-      - "traefik.http.routers.portainer.entrypoints=https"
-      - "traefik.http.routers.portainer.rule=Host(`dbbouncer.connectabil.com`) && PathPrefix(`/`)"
-      - "traefik.http.routers.portainer.service=portainer-service"
-      - "traefik.http.services.portainer-service.loadbalancer.server.port=5432"
-      - "traefik.http.routers.portainer.tls=true"
-      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
+    # labels:
+    #   - "traefik.enable=true" # <== Enable traefik on itself to view dashboard and assign subdomain to view it
+    #   - "traefik.http.routers.portainer.entrypoints=https"
+    #   - "traefik.http.routers.portainer.rule=Host(`dbbouncer.connectabil.com`) && PathPrefix(`/`)"
+    #   - "traefik.http.routers.portainer.service=portainer-service"
+    #   - "traefik.http.services.portainer-service.loadbalancer.server.port=5432"
+    #   - "traefik.http.routers.portainer.tls=true"
+    #   - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
     ports:
-      - "8003:5432"
+      - "8093:5432"
     depends_on:
       - postgres
     networks:
@@ -48,158 +48,8 @@ services:
       - easypanel
     restart: unless-stopped
 
-  # Monitoring Services
-  postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:v0.15.0
-    command: "--collector.database_wraparound --collector.long_running_transactions --collector.postmaster --collector.process_idle --collector.stat_statements"
-    environment:
-      - DATA_SOURCE_NAME=${DATA_SOURCE_NAME}
-    depends_on:
-      - postgres
-    networks:
-      - monitoring
-      - easypanel
-    restart: unless-stopped
-
-  pgbouncer-exporter:
-    image: prometheuscommunity/pgbouncer-exporter:v0.7.0
-    command:
-      - "--pgBouncer.connectionString=${PGBOUNCER_CONNECTION_STRING}"
-    depends_on:
-      - pgbouncer
-    networks:
-      - monitoring
-      - easypanel
-    restart: unless-stopped
-
-  query-exporter:
-    image: adonato/query-exporter:2.9.2
-    command:
-      - -L
-      - DEBUG
-    environment:
-      - PG_DATABASE_DSN=${DATA_SOURCE_NAME}
-    volumes:
-      - ./query-config.yml:/config.yaml
-    depends_on:
-      - postgres
-    networks:
-      - monitoring
-      - easypanel
-    restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana
-    volumes:
-      - grafana_data:/var/lib/grafana
-    ports:
-      - "8041:3000"
-    labels:
-      - "traefik.enable=true" # <== Enable traefik on itself to view dashboard and assign subdomain to view it
-      - "traefik.http.routers.portainer.entrypoints=https"
-      - "traefik.http.routers.portainer.rule=Host(`grafana.connectabil.com`) && PathPrefix(`/`)"
-      - "traefik.http.routers.portainer.service=portainer-service"
-      - "traefik.http.services.portainer-service.loadbalancer.server.port=3000"
-      - "traefik.http.routers.portainer.tls=true"
-      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
-    networks:
-      - monitoring
-      - easypanel
-    user: "root"
-    restart: unless-stopped
-
-  prometheus:
-    image: prom/prometheus
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.console.libraries=/etc/prometheus/console_libraries"
-      - "--web.console.templates=/etc/prometheus/consoles"
-      - "--storage.tsdb.retention.time=60d"
-      - "--web.enable-lifecycle"
-      - "--web.enable-remote-write-receiver"
-    volumes:
-      - prom-data:/prometheus
-      - ./prometheus/:/etc/prometheus/
-    networks:
-      - monitoring
-      - easypanel
-    depends_on:
-      - cadvisor
-    restart: unless-stopped
-    links:
-      - cadvisor:cadvisor
-      - alertmanager:alertmanager
-
-  node-exporter:
-    image: quay.io/prometheus/node-exporter:latest
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-      - /:/host:ro,rslave
-    command:
-      - "--path.rootfs=/host"
-      - "--path.procfs=/host/proc"
-      - "--path.sysfs=/host/sys"
-      - --collector.filesystem.ignored-mount-points
-      - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
-    networks:
-      - monitoring
-      - easypanel
-    restart: unless-stopped
-    deploy:
-      mode: global
-
-  alertmanager:
-    image: prom/alertmanager
-    # ports:
-    #   - 9093:9093
-    labels:
-      - "traefik.enable=true" # <== Enable traefik on itself to view dashboard and assign subdomain to view it
-      - "traefik.http.routers.portainer.entrypoints=https"
-      - "traefik.http.routers.portainer.rule=Host(`alert.connectabil.com`) && PathPrefix(`/`)"
-      - "traefik.http.routers.portainer.service=portainer-service"
-      - "traefik.http.services.portainer-service.loadbalancer.server.port=9093"
-      - "traefik.http.routers.portainer.tls=true"
-      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
-    volumes:
-      - ./alertmanager/:/etc/alertmanager/
-    networks:
-      - monitoring
-      - easypanel
-    restart: unless-stopped
-    command:
-      - "--config.file=/etc/alertmanager/config.yml"
-      - "--storage.path=/alertmanager"
-
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor
-    # ports:
-    #   - 8085:8080
-    labels:
-      - "traefik.enable=true" # <== Enable traefik on itself to view dashboard and assign subdomain to view it
-      - "traefik.http.routers.portainer.entrypoints=https"
-      - "traefik.http.routers.portainer.rule=Host(`cadvisor.connectabil.com`) && PathPrefix(`/`)"
-      - "traefik.http.routers.portainer.service=portainer-service"
-      - "traefik.http.services.portainer-service.loadbalancer.server.port=8080"
-      - "traefik.http.routers.portainer.tls=true"
-      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:rw
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-    restart: unless-stopped
-    networks:
-      - monitoring
-      - easypanel
-
 volumes:
   pg-data:
-  grafana_data:
-    external: true
-  prom-data:
 
 networks:
   database:
