@@ -1,4 +1,4 @@
-version: "3"
+version: "3.7"
 services:
   # Database Services
   postgres:
@@ -40,7 +40,7 @@ services:
     #   - "traefik.http.routers.portainer.tls=true"
     #   - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
     ports:
-      - "8093:5432"
+      - "8193:5432"
     depends_on:
       - postgres
     networks:
